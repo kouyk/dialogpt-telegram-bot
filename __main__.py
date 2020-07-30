@@ -41,15 +41,18 @@ send_typing_action = send_action(ChatAction.TYPING)
 def start(update: Update, context: CallbackContext):
     context.chat_data.clear()
     context.chat_data['message_count'] = 0
-    update.message.reply_text('[INFO] New conversation started')
+    update.message.reply_text('[INFO] New conversation started, use /restart to reinitialise the conversation')
 
 
-dp.add_handler(CommandHandler(['start', 'restart'], start))
+dp.add_handler(CommandHandler(['start', 'restart', 'bye'], start))
 
 
 @run_async
 @send_typing_action
 def dialogpt(update: Update, context: CallbackContext):
+    if context.chat_data.get('message_count') is None:
+        start(update, context)
+
     # encode the new user input, add the eos_token and return a tensor in PyTorch
     new_user_input_ids = tokenizer.encode(update.message.text + tokenizer.eos_token, return_tensors='pt')
 
@@ -65,6 +68,10 @@ def dialogpt(update: Update, context: CallbackContext):
     update.message.reply_text(tokenizer.decode(context.chat_data['chat_history_ids'][:, bot_input_ids.shape[-1]:][0],
                                                skip_special_tokens=True))
     context.chat_data['message_count'] += 1
+
+    if context.chat_data.get('message_count') > 6:
+        update.message.reply_text('[INFO] End of conversation, reply /restart to start new conversation')
+        context.chat_data.clear()
 
 
 # command handlers, e.g. /start
